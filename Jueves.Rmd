@@ -1,0 +1,167 @@
+---
+title: "Networks in R-Jueves"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+
+```{r igraph}
+
+require(igraph)
+#usamos igraph para graficos que tienen vertices o nodos. Estamos leyendo edege list, lista de interacciones
+
+web<-read.csv("Data/WeddellSea_FW.csv", header=T,check.names=FALSE)
+
+web<- web[,c(2,1)]
+
+str(web)
+
+g<-graph_from_data_frame(web)
+
+g#te hace el objeto igraph. Tiene 442 nodos y 1915 interacciones. DN quiere decir si es dirigido. 
+plot(g)
+E(g)#te dice los edges por ejemplo
+
+deg <- degree(g,mode = "all")
+deg #poniendo el deg lo llamo
+
+#hacer un plot mas amigable, entonces usar lso atributos del objeto
+E(g)        # The edges of the network
+V(g)        # The vertices (species) of the network
+V(g)$name   # The names of the species
+
+V(g)[name=="Detritus"]  # Select a vertex by attribute
+
+V(g)[1]    # Select a vertex by id
+
+g[1,]      # Directly access the adjacency matrix
+
+g[,1]      # Directly access the adjacency matrix
+
+deg <- degree(g, mode="all") # calculate the degree for all nodes: the number of edges 
+                             # or interactions
+
+deg <- degree(g, mode="in") # calculate the in-degree: the number of preys  
+
+
+deg <- degree(g, mode="out") # calculate the in-degree: the number of predators 
+
+deg <- degree(g,"Detritus", mode="out") # calculate the in-degree: the number of predators 
+
+deg
+
+# Nicer Plot
+
+plot(g, edge.arrow.size=.4,vertex.label=NA) # Smaller arrow size, not plot names
+
+plot(g, edge.arrow.size=.4,vertex.label=NA,vertex.size=8,layout=layout_with_fr) # Smaller vertex size, specifying a layout 
+
+deg <- degree(g, mode="all")
+
+V(g)$size <- log10(deg)*5+5    # add node degrees to igraph object
+V(g)$frame.color <- "white"    # Specify plot options directly on the object 
+V(g)$color <- "orange"         #
+
+plot(g, edge.arrow.size=.4,vertex.label=NA, edge.color='brown',layout=layout_with_lgl)
+require(NetIndices)
+
+tl <-TrophInd(get.adjacency(g,sparse=FALSE))#nivel trofico
+tl
+tl[tl$TL==2,]#re selecciona los niveles troficos iguales a 2
+
+#hacer un plot con niveles troficos
+# Plot with trophic levels
+
+lMat <-matrix(
+  nrow=vcount(g),  # Rows equal to the number of vertices (species)
+  ncol=2
+)
+
+lMat[,2]<-jitter(tl$TL,0.1)              # y-axis value based on trophic level
+lMat[,1]<-runif(vcount(g))   # randomly assign along x-axis
+
+plot(g, edge.width=.3,edge.arrow.size=.4,
+       vertex.label=NA,
+       edge.color="grey50",
+       edge.curved=0.3, layout=lMat)
+require(RColorBrewer)
+# es para ponerle colores
+# Add colors to the plot
+#
+require(RColorBrewer)
+
+colTL <-as.numeric(cut(tl$TL,11))   # Divide trophic levels in 11 segments
+colnet <- brewer.pal(11,"RdYlGn")   # Assign colors to trophic levels
+V(g)$color <- colnet[12-colTL]      # Add colors to the igraph object
+
+
+plot(g, edge.width=.3,edge.arrow.size=.4,
+       vertex.label=NA,
+       edge.color="grey50",
+       edge.curved=0.3, layout=lMat)
+
+# Read a network in adjacency matrix forma
+
+web <- read.csv("Data/BarentsBoreal_FW.csv",  header = T,check.names = F)
+
+if ((ncol(web)-1) == nrow(web)){         # The adjacency matrix must be square    
+
+  tmp0<-ncol(web)
+  tmp<-web[,2:tmp0]
+  tmp1<-as.matrix(tmp)
+  g <- graph_from_adjacency_matrix(tmp1)#esto podria ser toda la funcion aninada, pero arriba pusimos paso por paso
+
+
+} else{
+  warning ("El numero de filas no es igual al numero de columnas en la matrix adyacente")
+}
+
+g
+
+# Calculate other network indices
+
+deg <- degree(g, mode="out") # calculate the in-degree: the number of predators  
+
+V(g)$outdegree <-  deg
+
+nTop <- length(V(g)[outdegree==0]) # Top predators do not have predators
+
+deg <- degree(g, mode="in") # calculate the in-degree: the number of preys
+
+V(g)$indegree <-  deg
+
+nBasal <- length(V(g)[indegree==0]) # Basal species do not have preys 
+
+vcount(g)-nTop-nBasal # Intermediate species
+
+size <- vcount(g)
+
+links <- ecount(g)
+
+linkDen <- links/size          # Linkage density
+
+conn <- links/size^2           # Connectance
+
+pathLength <- average.path.length(g)   # Average path length 
+
+clusCoef <- transitivity(g, type = "global")   # Clustering coefficient 
+
+```
+
